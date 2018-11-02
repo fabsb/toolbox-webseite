@@ -1,0 +1,77 @@
+title: Snips
+---
+author: Max Bachmann
+---
+icon: fas fa-microphone
+---
+pub_date: 2018-11-02
+---
+teaser: Snips ist ein Sprachassistent der anders als die Sprachassistenten von großen Firmen wie Amazon, Google und Apple vollständig offline funktioniert und dadurch deine Nutzerdaten schützt.
+---
+body:
+
+##Über Snips
+
+Diese Projektbeschreibung soll sowohl eine einfache Anleitung zur Installation von Snips bieten, die auch für Personen ohne technischen Hintergrund verständlich ist, als auch näher auf fortgeschrittenere Funktionen, sowie meine eigene Implementierung eingehen.
+
+Wir sind alle besorgt, dass die Sprachassistenten von großen Technologieunternehmen wie Amazon, Google, Apple oder Microsoft jedes unserer Worte aufnimmt. Aus diesem Grund haben sich Alternativen wie beispielsweise [Mycroft](https://mycroft.ai/). Diese Sprachassistenten versprechen einen höheren Grad an Privatsphäre, die Umwandlung von Sprache zu Text (STT: Speech to Text) findet jedoch weiterhin in der Cloud statt. Dies bietet natürlich wie bei den großen Anbietern den Vorteil, dass die Sprachdaten aller Nutzer zur Verbesserung der Speech to Text Engine eingesetzt werden können. Zugleich ist es im Grunde allerdings immer noch in der Cloud. Selbst wenn wir annehmen dass das Unternehmen die Daten tatsächlich nicht weiter nutzt (was einem allerdings die großen Unternehmen ja auch versprechen) bleibt bei einer Cloud basierten Lösung immer noch die Gefahr, dass die Daten von Drittparteien abgegriffen werden. Weiterhin bedeutet dies auch immer dass ein Internetausfall immer einen Totalausfall des Systems bedeutet. Hier kommt [snips](https://snips.ai/) ins Spiel. Ihr Sprachassistent funktioniert vollständig offline und schützt dadurch die Daten seiner Nutzer ohne dafür einem Unternehmen Vertrauen zu schenken. Weiterhin kann ein Totalausfall des Systems durch einen Internetausfall ausgeschlossen werden. Natürlich können einzelne Dienste wie z.B. ein Wetterassistent weiterhin eine Internetverbindung benötigen, ein Internetausfall sorgt dann allerdings nur für den Ausfall einzelner Funktionen und beispielsweise die Lampen lassen sich weiterhin schalten. Als Nachteil kann der Sprachassistent hier allerdings nicht auf Basis der Sprachdaten aller seiner Nutzer trainiert werden. Anders als bei anderen offline Sprachassistenten wie [pocketsphinx](https://github.com/cmusphinx/pocketsphinx) funktioniert die Speech to Text Engine von snips jedoch überraschend gut. Weiterhin ist die Installation von snips sehr einfach und bietet danach beispielsweise einen App Store, der eine ähnliche Nutzung wie bei Amazon Alexa ermöglicht. Wie genau dies erreicht wird ist für dieses Projekt irrelevant und wird daher nicht näher erläutert. Bei Interesse kann dies jedoch in Chapter 3 dieses [whitepapers](https://tokensale.snips.ai/snips-air-whitepaper.pdf) nachgelesen werden.
+
+##Installation Snips
+
+Snips unterstützt eine Vielzahl an Plattformen, wobei die wohl meistgenutzte der Raspberry Pi ist. Aus diesem Grund wird dieser auch hier genutzt. 
+Die benötigte Hardware sind
+- [ein Raspberry Pi](https://www.raspberrypi.org/products/)
+- [ein Microphon](https://medium.com/snips-ai/benchmarking-microphone-arrays-respeaker-conexant-microsemi-acuedge-matrix-creator-minidsp-950de8876fda)
+- ein Lautsprecher
+- eine class 10 micro SD Karte (mind. 4Gb)
+
+Snips bietet für die Installation von Snips eine sehr einfach verständliche [Anleitung](https://snips.gitbook.io/getting-started/). Diese erläutert sowohl die Installation von Snips, als auch wie dem Sprachassisten weitere Apps hinzugefügt werden können.
+
+##Erstellen eigener Apps
+
+Mehr über die Plattform kann [hier](https://snips.gitbook.io/documentation/) erfahren werden. Weiterhin erläutert diese Dokumentation wie eigene Apps erstellt werden können.
+
+##Meine Implementierung
+Im Folgenden möchte ich meine Integration von Snips vorstellen. Teile hiervon sind bisher noch nicht umgesetzt.
+
+###Multiroom Setup
+In Snips lässt sich relativ einfach ein Multiroom Setup aufbauen, um so in jedem Raum auf den Sprachassistenten zugreifen zu können. Eine Anleitung findet sich in der [Dokumentation von snips](https://snips.gitbook.io/documentation/installing-snips/multi-device-setup-satellites). Wobei ich hierbei Konfiguration B gewählt habe. Dieses Setup besitzt allerdings noch einige Schwachstellen. 
+Hauptsächlich sind das:
+-Erst wenn die von der TTS erstellte Audiodatei abgespielt wurde reagieren die anderen Komponenten wieder
+-es gibt keine Möglichkeit die Sprachausgabe zu unterbrechen, oder zu beenden
+Als Lösung für dieses Problem hat ein Nutzer bereits eine proof of concept app erstellt, die als snips audio server dient und audio von snips ausgibt, während gleichzeitig hotwords erkannt werden können, durch die beispielsweise die audio Ausgabe beendet werden kann. Leider scheint er diese app wieder von seinem git repo entfernt zu haben, es ist aber wahrscheinlich dass eine entsprechende Funktion auch irgendwann von snips nachgereicht wird.
+
+###Hardware
+Als Hauptgerät kommt ein Raspberry Pi 3b zum Einsatz. Für die einzelnen Satelittes jeweils ein Raspberry Pi Zero W mit einem [respeaker mic array v2](http://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/). Grund für dieses recht teure Microphon Array sind dessen integrierten Sprach Algorithmen wie AEC (Acoustic Echo Cancelation) und Noise Suppression. Dadurch kann auch beispielsweise mit Hintergrundmusik noch eine sehr gute Sprachaufnahme erzielt werden. Für die Audioausgabe sollen die normalen Lautsprecher in den entsprechenden Räumen zum Einsatz kommen, die dort auch für die Musikwiedergabe genutzt werden.
+
+###Audio Setup
+Die AEC Funktion des mic array v2 nutzt ein loop back des audio outputs des mic arrays. Leider unterstützt dieses nur eine sample Rate von 16kHz. Während dies für AEC völlig ausreichend ist, ist es zum Abspielen von Musik nicht wirklich geeignet. Gleichzeitig ist bereits seit längerer Zeit der Plan ein multiroom audio setup mit dem Raspberry Pi zu realisieren. Der Plan ist daher auf jedem Satellittengerät sowohl die Software von snips, als auch [snapclient](https://github.com/badaix/snapcast) laufen zulassen. Die beiden Audioquellen sollen mit [dmix](https://alsa.opensrc.org/Dmix) gemixt werden und dann zum einen über USB mit einer Sample Rate von 16kHz and das mic array gesendet werden für die AEC Funktion und zum anderen in hoher Qualität über einen I2S DAC an die entsprechenden Lautsprecher.
+
+###Magic Mirror 2
+[Magic Mirror 2](https://magicmirror.builders/) ist eine Open Source Software für Smart Mirror. Der Bau meines Smart Mirrors wird nochmals gesondert beschrieben. Im Folgenden geht es lediglich um die Verknüpfung zwischen Snips und Magic Mirror 2 (MM2). Es gibt für MM2 bereits mehrere Module, die es dem Nutzer ermöglichen Module einzublenden, oder auszublenden. Häufig mit einer Seitenfunktion mit der auch mehrere Module auf einmal eingeblendet werden können. Es gibt hierbei sowohl Implementierungen die cloudbasierte Sprachassistenten nutzen, als auch Implementierungen die beispielsweise pocketsphinx nutzen. Diese Implementierungen sind allerdings in der Regel für die englische Sprache und die offline funktionierenden akzeptieren nur sehr kurze Befehle wie "Hide Clock" oder "Show Page One". Aus diesem Grund war das Ziel mit Snips eine Steuerung zu entwickeln, die auf deutsch funktioniert (eine englische Version wird zu einem späteren Zeitpunkt noch ergänzt), die längere Befehle akzeptiert, die dem Nutzer auch mehr Freiheit in der Formulierung lassen, sowie als zusätzliche Funktion das Bewegen von Modulen. Weiterhin gefiel mir an der bisherigen offline Implementierung nicht wie diese das ein und ausblenden realisiert haben. So sendet dass Sprachmodul jeweils eine Nachricht (z.B. 'HIDE_CLOCK') and das entsprechende Modul und dieses reagiert indem es sich ausblendet, obwohl es technisch auch möglich ist, dass das Sprachmodul die entsprechenden Module direkt ausblendet ohne dass bei allen anderen Modulen Code hinzugefügt werden muss.
+
+<iframe width="560" height="315"
+src="https://www.youtube.com/embed/09XWlDiJ6dM">
+</iframe> 
+
+[Quelltext](https://gitlab.com/CaptnsTech/mmm-snipshideshow)
+
+Da für die Kommunikation innerhalb von Snips MQTT zum Einsatz kommt, während innerhalb von MM2 Nachrichten entsprechend [dieser Dokumentation](https://github.com/MichMich/MagicMirror/tree/master/modules) genutzt werden, wird weiterhin eine Schnittstelle zwischen MQTT und dem MM2 internen Nachrichtensystem benötigt. Es gibt hier bereits zwei MQTT module, die allerdings beiden nur dazu gedacht sind eineinzelnes topic zu subscriben und die Nachrichten direkt in einer Anzeige auszugeben. Weiterhin unterstützen diese weder Passwort/Username noch TLS für MQTT. Aus diesem Grund soll das Schnittstellenmodul so allgemein gehalten werden, dass es nicht nur mit snips (sowohl für das Modul mmm-snipshideshow, als auch ggfs. weitere module), sondern allgemein für jegliche MQTT Nachrichten nutzbar ist und hier auch die Nutzung von Passwort/Username, als auch TLS ermöglicht. Der aktuelle Entwicklungsstand findet sich [hier](https://gitlab.com/CaptnsTech/mqtt-mm2-bridge)
+
+###Security
+Auch wenn Snips vollständig offline läuft kannim Grunde noch jeder im gleichen Netzwerk die Daten abgreifen. Um dies zu verhindern lassen sich Username/Passwort und TLS für den MQTT Broker einrichten. Leider werden diese Funktionen von dem von Snips veröffentliche [App template](https://github.com/snipsco/snips-app-template-py) nicht unterstützt, wodurch nach aktivieren der Funktion keine App mehr funktioniert. Weiterhin unterstützt das Template aktuell nur einen Broker auf localhost:1883. Aus diesem Grund bin ich gerade dabei diese Funktionen für das App template nachzurüsten.
+
+###Apps
+Ich habe bereits mehre Apps veröffentlicht die ich im Folgenden kurz beschreibe
+* Deutsch
+  * [Komplimente](https://console.snips.ai/store/de/skill_VroQd3mn6aQ): Bei snips bedanken
+  * [gutenMorgen/guteNacht](https://console.snips.ai/store/de/skill_D6zGZxakXBY0): Snips guten morgen und gute Nacht wünschen
+  * [Buchstabiere](https://console.snips.ai/store/de/skill_dABy01ADOV7Y): Ermöglicht es Snips Wörter von der Duden Liste der rechtschreiblich schweren Wörter zu buchstabieren
+  * [Schere,Stein,Papier](https://console.snips.ai/store/de/skill_8a6NE0b9y8E): Spiele Schere, Stein, Papier mit Snips
+* Englisch
+  * [Rock, Paper, Scissors](https://console.snips.ai/store/en/skill_1MdKGMVbdD93): play rock, paper, scissors with snips
+* coming soon
+  * Umrechnen: Ermöglicht es Snips eine Vielzahl von Einheiten wie Längen, Gewichte, Zeiten ... umzurechnen
+  * MM2-HideShowMove: Anzeigen/Versschwinden lassen und Bewegen der Module in Magic Mirror 2 
+  * FilmFragen: Ergänzung einer Vielzahl and Easter Egg Fragen zu Filmen
+
